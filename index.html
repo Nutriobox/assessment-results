@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assessment Results Dashboard</title>
+<style>
+  :root{
+    color-scheme:light;
+    --bg:#eef2f5; --surface:#ffffff; --surface-2:#f4f7f9; --line:#e3e9ee;
+    --fg:#15232e; --muted:#5a6b7a; --faint:#8a99a8;
+    --accent:#17794b; --accent-fg:#fff; --accent-soft:#e6f3ec;
+    --header:#132a20; --header-fg:#eaf4ee;
+    --warn:#b45309; --warn-soft:#fdf3e4; --danger:#c0392b; --danger-soft:#fdeceb;
+    --ok:#17794b; --blue:#1f5fa8; --blue-soft:#e7f0fa;
+    --radius:14px; --radius-sm:9px; --shadow:0 1px 2px #15232e10,0 6px 22px #15232e0d;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0;line-height:1.25}
+  .tnum{font-variant-numeric:tabular-nums}
+  .bar{position:sticky;top:0;z-index:30;background:var(--header);color:var(--header-fg);display:flex;align-items:center;gap:12px;padding:12px 20px;box-shadow:var(--shadow);flex-wrap:wrap}
+  .bar b{font-size:15px;font-weight:650} .bar .sp{flex:1}
+  .bar .meta{font-size:11.5px;color:#9fc2ad}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:18px 20px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .btn{appearance:none;border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;background:var(--surface-2);color:var(--fg)}
+  .btn:hover{background:var(--line)} .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.primary:hover{filter:brightness(1.05)} .btn.sm{padding:6px 11px;font-size:12.5px}
+  input[type=text],input[type=password],input[type=search],select{background:var(--surface-2);color:var(--fg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #17794b33}
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:15px 16px;box-shadow:var(--shadow)}
+  .kpi .l{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:650}
+  .kpi .v{font-size:26px;font-weight:800;margin-top:4px}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.tbl th,table.tbl td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:650;cursor:pointer;user-select:none}
+  table.tbl tbody tr{cursor:pointer} table.tbl tbody tr:hover{background:var(--surface-2)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
+  .pill.low{background:var(--accent-soft);color:var(--accent)} .pill.med{background:var(--warn-soft);color:#7a4a08} .pill.high{background:var(--danger-soft);color:#86261c}
+  .pill.a{background:var(--blue-soft);color:var(--blue)} .pill.b{background:#efeaf7;color:#6b43b8}
+  .scorebar{display:inline-flex;align-items:center;gap:8px}
+  .scorebar .t{width:70px;height:7px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .scorebar .t i{display:block;height:100%;background:var(--accent)}
+  .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+  .empty .big{font-size:40px;margin-bottom:10px}
+  .overlay{position:fixed;inset:0;z-index:60;background:#15232ea0;display:none;justify-content:center;align-items:flex-start;padding:28px 16px;overflow:auto}
+  .overlay.show{display:flex}
+  .detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);max-width:900px;width:100%;box-shadow:0 24px 70px #15232e50}
+  .detail .dh{display:flex;align-items:flex-start;gap:12px;padding:20px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0}
+  .detail .dh .x{margin-left:auto;cursor:pointer;font-size:22px;color:var(--muted);background:none;border:none}
+  .dbody{padding:20px 22px}
+  .sec{margin:18px 0}
+  .sec h3{font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .sec h3 .tag{font-size:11px;font-weight:650;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);padding:2px 8px;border-radius:999px}
+  .qrow{border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px 15px;margin-bottom:10px;background:var(--surface-2)}
+  .qrow .qh{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  .qrow .qp{font-weight:600;font-size:14px;margin-bottom:8px}
+  .qrow pre{background:#0f2018;color:#dcebe2;border-radius:8px;padding:12px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+  .chosen{font-size:13px;margin:4px 0}
+  .ok{color:var(--accent);font-weight:700} .bad{color:var(--danger);font-weight:700}
+  .modelbox{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;margin-top:8px;background:var(--surface)}
+  .modelbox summary{cursor:pointer;font-weight:650;font-size:12.5px;color:var(--accent)}
+  .rubric{font-size:12.5px;color:var(--muted);margin:8px 0 0;padding-left:18px}
+  .autonote{font-size:12px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:6px 0 12px}
+  .autoest{display:inline-block;font-weight:700;font-size:12.5px;border-radius:6px;padding:3px 10px;margin:8px 0 2px}
+  .autoest.ok{background:#e3f4ea;color:#1b7a44;border:1px solid #b7e2c7}
+  .autoest.warn{background:#fff4e2;color:#9a5b00;border:1px solid #f3d49a}
+  .autoest.bad{background:#fde4e4;color:#b42318;border:1px solid #f3b4b4}
+  .checks{list-style:none;margin:6px 0 0;padding:0;font-size:12px}
+  .checks li{margin:2px 0}
+  .checks li.ok{color:#1b7a44}
+  .checks li.no{color:var(--muted)}
+  .mark{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}
+  .mark input{width:70px}
+  .flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .flagcell{border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:var(--surface-2)}
+  .flagcell .l{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:650}
+  .flagcell .v{font-size:18px;font-weight:800;margin-top:3px}
+  .flagcell.alert{border-color:#f1b7b0;background:var(--danger-soft)}
+  .film{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:8px}
+  .film figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface-2)}
+  .film img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover} .film figure.flagd{border-color:var(--danger)}
+  .film figcaption{font-size:10px;color:var(--faint);padding:3px 5px;text-align:center}
+  .logtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .logtbl th,.logtbl td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+  .cfg{display:grid;gap:8px;grid-template-columns:1fr 1fr auto;align-items:end}
+  @media (max-width:640px){.cfg{grid-template-columns:1fr}}
+  .cfg label{font-size:11px;font-weight:650;color:var(--muted);display:block;margin-bottom:4px}
+  .note{font-size:12px;color:var(--muted);background:var(--warn-soft);border:1px solid #f0d49a;border-radius:8px;padding:9px 12px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .tabs button.on{background:var(--accent);color:#fff;border-color:transparent}
+</style>
+</head>
+<body>
+<header class="bar">
+  <b>Assessment Results</b>
+  <span class="meta" id="hmeta">Allsure Services · candidate dashboard</span>
+  <span class="sp"></span>
+  <button class="btn sm" id="refreshBtn">↻ Refresh</button>
+  <button class="btn sm" id="importBtn">⬆ Import file(s)</button>
+  <input type="file" id="fileInput" accept="application/json,.json" multiple hidden>
+  <button class="btn sm" id="csvBtn">⬇ Export CSV</button>
+</header>
+<div class="wrap">
+
+  <div class="card pad" id="connCard" style="margin-bottom:16px">
+    <div class="row" style="justify-content:space-between">
+      <b>Candidate results</b>
+      <span class="faint" id="connStatus">Loading…</span>
+    </div>
+    <p class="note" style="margin-top:10px">Results load automatically. Use <b>↻ Refresh</b> for the latest submissions, click a candidate for full detail, or <b>Export CSV</b> for a spreadsheet.</p>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <div class="pad" style="border-bottom:1px solid var(--line)">
+      <div class="row">
+        <input type="search" id="search" placeholder="Search name / email…" style="flex:1;min-width:180px">
+        <select id="formFilter"><option value="">All forms</option><option value="A">Form A</option><option value="B">Form B</option></select>
+        <select id="riskFilter"><option value="">All integrity</option><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="tbl">
+        <thead><tr>
+          <th data-k="name">Candidate</th><th data-k="form">Form</th><th data-k="submitted">Submitted</th>
+          <th data-k="exp">Exp</th><th data-k="obj">Objective</th><th data-k="written">Written</th>
+          <th data-k="total">Total</th><th data-k="attn">Attention</th><th data-k="risk">Integrity</th><th data-k="flags">Flags</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyState"><div class="big">📋</div><div>No submissions yet. Load from Supabase or import result files.</div></div>
+  </div>
+</div>
+
+<div class="overlay" id="detailOverlay"><div class="detail"><div id="detailContent"></div></div></div>
+
+<script>
+window.__BANK__ = {"A": [{"id": "A-R1", "section": "R", "type": "single", "prompt": "A request handler in a Node.js API runs a heavy CPU-bound computation (e.g., image resize) and the whole service becomes unresponsive under load. What is the correct fix?", "points": 3, "options": ["Add more try/catch blocks around it", "Wrap the computation in async/await so it stops blocking", "Move it to a worker thread (or a separate service/process)", "Increase the HTTP request timeout"], "correct": [2]}, {"id": "A-R2", "section": "R", "type": "single", "prompt": "You insert n random keys one at a time into a self-balancing BST. What is the overall average time complexity?", "points": 3, "options": ["O(n)", "O(n log n)", "O(log n)", "O(n²)"], "correct": [1]}, {"id": "A-R3", "section": "R", "type": "single", "prompt": "Under high traffic a popular cache key expires and thousands of requests simultaneously recompute it, hammering the database. Which mitigates this 'cache stampede'?", "points": 3, "options": ["Delete the cache entirely", "A recompute lock + staggered/jittered TTLs (or serve-stale while one worker refreshes)", "Make the TTL infinite so it never expires", "Switch all reads to the database"], "correct": [1]}, {"id": "A-R4", "section": "R", "type": "single", "prompt": "Inside one transaction you run the same SELECT twice and get different committed results because another transaction committed in between. This anomaly is called:", "points": 3, "options": ["Deadlock", "Non-repeatable read", "Lost update", "Dirty read"], "correct": [1]}, {"id": "A-R5", "section": "R", "type": "single", "prompt": "Which statement about preventing SQL injection is correct?", "points": 3, "options": ["Parameterized queries / prepared statements are the core defence; an ORM can still be unsafe with raw or string-built SQL", "Injection is only a risk on login pages", "Escaping quotes manually is sufficient and preferred", "Using any ORM makes injection impossible"], "correct": [0]}, {"id": "A-R6", "section": "R", "type": "single", "prompt": "A React child component re-renders on every parent render even though its props never change. The right fix is to:", "points": 3, "options": ["Add a key prop to the child", "Move the child into a useEffect", "Convert the component to a class", "Wrap the child in React.memo and keep callback/object props stable with useCallback/useMemo"], "correct": [3]}, {"id": "A-R7", "section": "R", "type": "single", "prompt": "An idempotency key sent with a POST to a payment or booking API primarily guarantees that:", "points": 3, "options": ["The request is encrypted in transit", "The response is cached forever", "A retried or duplicated request does not create a second side effect", "The endpoint becomes faster"], "correct": [2]}, {"id": "A-R8", "section": "R", "type": "single", "prompt": "An AI coding assistant suggests a convenient-looking library method. Which check specifically guards against the 'hallucinated API' risk?", "points": 3, "options": ["Confirm the library and method actually exist with that signature in the official docs/source before relying on it", "Trust it because the model is usually right", "Run it once; if it doesn't crash it's fine", "Rename the method to something clearer"], "correct": [0]}, {"id": "A-R9", "section": "R", "type": "single", "prompt": "What is the difference between HTTP PUT and PATCH?", "points": 3, "options": ["PATCH is only for creating resources", "PUT cannot send a body", "PUT replaces the entire resource; PATCH applies a partial update", "They are identical"], "correct": [2]}, {"id": "A-R10", "section": "R", "type": "single", "prompt": "You have a composite index on `(customer_id, created_at)`. Which query can use that index efficiently?", "points": 3, "options": ["WHERE UPPER(status) = 'PAID'", "WHERE customer_id = 42  (filtering the leftmost column)", "WHERE created_at = '2026-01-01'  (filtering only the second column)", "A query with no WHERE clause"], "correct": [1]}, {"id": "A-O1", "section": "O", "type": "single", "prompt": "What does this print?\n```\nfor (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\n```", "points": 4, "options": ["0 1 2", "Nothing is printed", "0 0 0", "3 3 3"], "correct": [3]}, {"id": "A-O2", "section": "O", "type": "single", "prompt": "What is the output?\n```\ndef add(x, acc=[]):\n    acc.append(x)\n    return acc\nprint(add(1))\nprint(add(2))\n```", "points": 4, "options": ["[1] then [2]", "It raises an error", "[1] then [1, 2]", "[1] then [1]"], "correct": [2]}, {"id": "A-O3", "section": "O", "type": "single", "prompt": "What does this evaluate to?\n```\nconsole.log(0.1 + 0.2 === 0.3);\n```", "points": 4, "options": ["false", "0.3", "It throws an error", "true"], "correct": [0]}, {"id": "A-O4", "section": "O", "type": "single", "prompt": "What is the time complexity of this function (binarySearch is O(log n))?\n```\nfunction countHits(arr, sorted) {\n  let count = 0;\n  for (let i = 0; i < arr.length; i++) {\n    if (binarySearch(sorted, arr[i])) count++;\n  }\n  return count;\n}\n```", "points": 4, "options": ["O(n²)", "O(n)", "O(n log n)", "O(log n)"], "correct": [2]}, {"id": "A-O5", "section": "O", "type": "single", "prompt": "This function should return the last element. What is wrong with it?\n```\nfunction lastElement(arr) {\n  for (let i = 0; i <= arr.length; i++) {\n    if (i === arr.length) return arr[i];\n  }\n}\n```", "points": 4, "options": ["It is too slow at O(n)", "Off-by-one: it returns arr[arr.length], which is undefined", "Nothing — it works correctly", "The array must be sorted first"], "correct": [1]}, {"id": "A-C1", "section": "C", "type": "code", "prompt": "Write a function `maxProfit(prices)` where `prices[i]` is a stock price on day i. Return the maximum total profit from **at most two** buy–sell transactions (sell before buying again; no overlap). Return 0 if no profit. State time & space complexity.\nExample: `[3,3,5,0,0,3,1,4]` → `6`.", "points": 12, "manual": true, "model": "# O(n) time, O(1) space.\ndef max_profit(prices):\n    buy1 = buy2 = float('-inf'); sell1 = sell2 = 0\n    for p in prices:\n        buy1  = max(buy1, -p)\n        sell1 = max(sell1, buy1 + p)\n        buy2  = max(buy2, sell1 - p)\n        sell2 = max(sell2, buy2 + p)\n    return sell2", "rubric": ["Correct on the two-transaction case, not just one transaction (the common mistake). (6)", "O(n) time — a brute force over all pairs (O(n²)+) is partial credit. (4)", "Handles empty / monotonically decreasing input -> 0; complexity stated. (2)"]}, {"id": "A-C2", "section": "C", "type": "code", "prompt": "Implement a class `LRUCache(capacity)`: `get(key)` returns the value or -1 and marks it most-recently-used; `put(key, value)` inserts/updates and evicts the least-recently-used key when over capacity. Both must be **O(1)** average. Say how you achieve O(1).", "points": 12, "manual": true, "model": "from collections import OrderedDict\nclass LRUCache:\n    def __init__(self, capacity):\n        self.cap = capacity; self.d = OrderedDict()\n    def get(self, key):\n        if key not in self.d: return -1\n        self.d.move_to_end(key); return self.d[key]\n    def put(self, key, value):\n        if key in self.d: self.d.move_to_end(key)\n        self.d[key] = value\n        if len(self.d) > self.cap: self.d.popitem(last=False)", "rubric": ["get and put correct, including move-to-most-recent on get. (6)", "O(1): hash map + doubly linked list, or a justified OrderedDict (a list scan is partial). (4)", "Correct eviction of the LRU key when full; handles update-existing. (2)"]}, {"id": "A-C3", "section": "C", "type": "code", "prompt": "Implement `retryWithBackoff(fn, maxAttempts)` in any language. `fn` is an async function that may fail. Retry on failure with **exponential backoff plus jitter**, up to `maxAttempts` attempts; if all fail, rethrow the last error; return the result on success. Say why jitter matters.", "points": 12, "manual": true, "model": "async function retryWithBackoff(fn, maxAttempts = 5) {\n  let lastErr;\n  for (let attempt = 0; attempt < maxAttempts; attempt++) {\n    try { return await fn(); }\n    catch (err) {\n      lastErr = err;\n      if (attempt === maxAttempts - 1) break;\n      const base = 200 * 2 ** attempt;\n      await new Promise(r => setTimeout(r, base + Math.random() * base));\n    }\n  }\n  throw lastErr;\n}\n// Jitter spreads retries so many clients don't retry in lockstep (thundering herd).", "rubric": ["Retry loop with a hard attempt cap and rethrow of the last error. (5)", "Exponential backoff (delay grows per attempt), not a fixed delay. (4)", "Jitter + explains why (avoids synchronized retry storms); correct async use. (3)"]}, {"id": "A-D1", "section": "D", "type": "sql", "prompt": "Table `sales(id, store_id, sold_at TIMESTAMP, amount NUMERIC)`. Write ONE query returning, for each store: the store_id, its total sales, and the amount of its single best day (highest sum of `amount` on any one calendar day). Order by best-day amount, highest first.", "points": 10, "manual": true, "model": "WITH daily AS (\n  SELECT store_id, CAST(sold_at AS DATE) AS d, SUM(amount) AS day_total\n  FROM sales\n  GROUP BY store_id, CAST(sold_at AS DATE)\n)\nSELECT store_id, SUM(day_total) AS total_sales, MAX(day_total) AS best_day_amount\nFROM daily\nGROUP BY store_id\nORDER BY best_day_amount DESC;", "rubric": ["Aggregates to a daily total per store first (CTE/derived table/window) — the key insight. (4)", "MAX of daily totals for the best day AND SUM for the overall total. (3)", "Groups by calendar day (casts timestamp to date); correct ordering. (3)"]}, {"id": "A-D2", "section": "D", "type": "code", "prompt": "This function always returns an empty array. Identify the bug, explain why, and rewrite it correctly (results in input order).\n```\nasync function fetchAll(ids) {\n  const results = [];\n  ids.forEach(async (id) => {\n    const item = await getItem(id);\n    results.push(item);\n  });\n  return results;\n}\n```", "points": 8, "manual": true, "model": "// Bug: forEach does not await the async callbacks, so return runs before any push.\nasync function fetchAll(ids) {\n  return Promise.all(ids.map(id => getItem(id)));\n}\n// or sequential: for (const id of ids) results.push(await getItem(id));", "rubric": ["Identifies that forEach does not wait for the async callbacks. (4)", "Correct fix: Promise.all(ids.map(...)) or for...of with await. (3)", "Order correct / reasons about parallel vs sequential. (1)"]}], "B": [{"id": "A-R1", "section": "R", "type": "single", "prompt": "A request handler in a Node.js API runs a heavy CPU-bound computation (e.g., image resize) and the whole service becomes unresponsive under load. What is the correct fix?", "points": 3, "options": ["Add more try/catch blocks around it", "Wrap the computation in async/await so it stops blocking", "Move it to a worker thread (or a separate service/process)", "Increase the HTTP request timeout"], "correct": [2]}, {"id": "A-R2", "section": "R", "type": "single", "prompt": "You insert n random keys one at a time into a self-balancing BST. What is the overall average time complexity?", "points": 3, "options": ["O(n)", "O(n log n)", "O(log n)", "O(n²)"], "correct": [1]}, {"id": "A-R3", "section": "R", "type": "single", "prompt": "Under high traffic a popular cache key expires and thousands of requests simultaneously recompute it, hammering the database. Which mitigates this 'cache stampede'?", "points": 3, "options": ["Delete the cache entirely", "A recompute lock + staggered/jittered TTLs (or serve-stale while one worker refreshes)", "Make the TTL infinite so it never expires", "Switch all reads to the database"], "correct": [1]}, {"id": "A-R4", "section": "R", "type": "single", "prompt": "Inside one transaction you run the same SELECT twice and get different committed results because another transaction committed in between. This anomaly is called:", "points": 3, "options": ["Deadlock", "Non-repeatable read", "Lost update", "Dirty read"], "correct": [1]}, {"id": "A-R5", "section": "R", "type": "single", "prompt": "Which statement about preventing SQL injection is correct?", "points": 3, "options": ["Parameterized queries / prepared statements are the core defence; an ORM can still be unsafe with raw or string-built SQL", "Injection is only a risk on login pages", "Escaping quotes manually is sufficient and preferred", "Using any ORM makes injection impossible"], "correct": [0]}, {"id": "A-R6", "section": "R", "type": "single", "prompt": "A React child component re-renders on every parent render even though its props never change. The right fix is to:", "points": 3, "options": ["Add a key prop to the child", "Move the child into a useEffect", "Convert the component to a class", "Wrap the child in React.memo and keep callback/object props stable with useCallback/useMemo"], "correct": [3]}, {"id": "A-R7", "section": "R", "type": "single", "prompt": "An idempotency key sent with a POST to a payment or booking API primarily guarantees that:", "points": 3, "options": ["The request is encrypted in transit", "The response is cached forever", "A retried or duplicated request does not create a second side effect", "The endpoint becomes faster"], "correct": [2]}, {"id": "A-R8", "section": "R", "type": "single", "prompt": "An AI coding assistant suggests a convenient-looking library method. Which check specifically guards against the 'hallucinated API' risk?", "points": 3, "options": ["Confirm the library and method actually exist with that signature in the official docs/source before relying on it", "Trust it because the model is usually right", "Run it once; if it doesn't crash it's fine", "Rename the method to something clearer"], "correct": [0]}, {"id": "A-R9", "section": "R", "type": "single", "prompt": "What is the difference between HTTP PUT and PATCH?", "points": 3, "options": ["PATCH is only for creating resources", "PUT cannot send a body", "PUT replaces the entire resource; PATCH applies a partial update", "They are identical"], "correct": [2]}, {"id": "A-R10", "section": "R", "type": "single", "prompt": "You have a composite index on `(customer_id, created_at)`. Which query can use that index efficiently?", "points": 3, "options": ["WHERE UPPER(status) = 'PAID'", "WHERE customer_id = 42  (filtering the leftmost column)", "WHERE created_at = '2026-01-01'  (filtering only the second column)", "A query with no WHERE clause"], "correct": [1]}, {"id": "A-O1", "section": "O", "type": "single", "prompt": "What does this print?\n```\nfor (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\n```", "points": 4, "options": ["0 1 2", "Nothing is printed", "0 0 0", "3 3 3"], "correct": [3]}, {"id": "A-O2", "section": "O", "type": "single", "prompt": "What is the output?\n```\ndef add(x, acc=[]):\n    acc.append(x)\n    return acc\nprint(add(1))\nprint(add(2))\n```", "points": 4, "options": ["[1] then [2]", "It raises an error", "[1] then [1, 2]", "[1] then [1]"], "correct": [2]}, {"id": "A-O3", "section": "O", "type": "single", "prompt": "What does this evaluate to?\n```\nconsole.log(0.1 + 0.2 === 0.3);\n```", "points": 4, "options": ["false", "0.3", "It throws an error", "true"], "correct": [0]}, {"id": "A-O4", "section": "O", "type": "single", "prompt": "What is the time complexity of this function (binarySearch is O(log n))?\n```\nfunction countHits(arr, sorted) {\n  let count = 0;\n  for (let i = 0; i < arr.length; i++) {\n    if (binarySearch(sorted, arr[i])) count++;\n  }\n  return count;\n}\n```", "points": 4, "options": ["O(n²)", "O(n)", "O(n log n)", "O(log n)"], "correct": [2]}, {"id": "A-O5", "section": "O", "type": "single", "prompt": "This function should return the last element. What is wrong with it?\n```\nfunction lastElement(arr) {\n  for (let i = 0; i <= arr.length; i++) {\n    if (i === arr.length) return arr[i];\n  }\n}\n```", "points": 4, "options": ["It is too slow at O(n)", "Off-by-one: it returns arr[arr.length], which is undefined", "Nothing — it works correctly", "The array must be sorted first"], "correct": [1]}, {"id": "A-C1", "section": "C", "type": "code", "prompt": "Write a function `maxProfit(prices)` where `prices[i]` is a stock price on day i. Return the maximum total profit from **at most two** buy–sell transactions (sell before buying again; no overlap). Return 0 if no profit. State time & space complexity.\nExample: `[3,3,5,0,0,3,1,4]` → `6`.", "points": 12, "manual": true, "model": "# O(n) time, O(1) space.\ndef max_profit(prices):\n    buy1 = buy2 = float('-inf'); sell1 = sell2 = 0\n    for p in prices:\n        buy1  = max(buy1, -p)\n        sell1 = max(sell1, buy1 + p)\n        buy2  = max(buy2, sell1 - p)\n        sell2 = max(sell2, buy2 + p)\n    return sell2", "rubric": ["Correct on the two-transaction case, not just one transaction (the common mistake). (6)", "O(n) time — a brute force over all pairs (O(n²)+) is partial credit. (4)", "Handles empty / monotonically decreasing input -> 0; complexity stated. (2)"]}, {"id": "A-C2", "section": "C", "type": "code", "prompt": "Implement a class `LRUCache(capacity)`: `get(key)` returns the value or -1 and marks it most-recently-used; `put(key, value)` inserts/updates and evicts the least-recently-used key when over capacity. Both must be **O(1)** average. Say how you achieve O(1).", "points": 12, "manual": true, "model": "from collections import OrderedDict\nclass LRUCache:\n    def __init__(self, capacity):\n        self.cap = capacity; self.d = OrderedDict()\n    def get(self, key):\n        if key not in self.d: return -1\n        self.d.move_to_end(key); return self.d[key]\n    def put(self, key, value):\n        if key in self.d: self.d.move_to_end(key)\n        self.d[key] = value\n        if len(self.d) > self.cap: self.d.popitem(last=False)", "rubric": ["get and put correct, including move-to-most-recent on get. (6)", "O(1): hash map + doubly linked list, or a justified OrderedDict (a list scan is partial). (4)", "Correct eviction of the LRU key when full; handles update-existing. (2)"]}, {"id": "A-C3", "section": "C", "type": "code", "prompt": "Implement `retryWithBackoff(fn, maxAttempts)` in any language. `fn` is an async function that may fail. Retry on failure with **exponential backoff plus jitter**, up to `maxAttempts` attempts; if all fail, rethrow the last error; return the result on success. Say why jitter matters.", "points": 12, "manual": true, "model": "async function retryWithBackoff(fn, maxAttempts = 5) {\n  let lastErr;\n  for (let attempt = 0; attempt < maxAttempts; attempt++) {\n    try { return await fn(); }\n    catch (err) {\n      lastErr = err;\n      if (attempt === maxAttempts - 1) break;\n      const base = 200 * 2 ** attempt;\n      await new Promise(r => setTimeout(r, base + Math.random() * base));\n    }\n  }\n  throw lastErr;\n}\n// Jitter spreads retries so many clients don't retry in lockstep (thundering herd).", "rubric": ["Retry loop with a hard attempt cap and rethrow of the last error. (5)", "Exponential backoff (delay grows per attempt), not a fixed delay. (4)", "Jitter + explains why (avoids synchronized retry storms); correct async use. (3)"]}, {"id": "A-D1", "section": "D", "type": "sql", "prompt": "Table `sales(id, store_id, sold_at TIMESTAMP, amount NUMERIC)`. Write ONE query returning, for each store: the store_id, its total sales, and the amount of its single best day (highest sum of `amount` on any one calendar day). Order by best-day amount, highest first.", "points": 10, "manual": true, "model": "WITH daily AS (\n  SELECT store_id, CAST(sold_at AS DATE) AS d, SUM(amount) AS day_total\n  FROM sales\n  GROUP BY store_id, CAST(sold_at AS DATE)\n)\nSELECT store_id, SUM(day_total) AS total_sales, MAX(day_total) AS best_day_amount\nFROM daily\nGROUP BY store_id\nORDER BY best_day_amount DESC;", "rubric": ["Aggregates to a daily total per store first (CTE/derived table/window) — the key insight. (4)", "MAX of daily totals for the best day AND SUM for the overall total. (3)", "Groups by calendar day (casts timestamp to date); correct ordering. (3)"]}, {"id": "A-D2", "section": "D", "type": "code", "prompt": "This function always returns an empty array. Identify the bug, explain why, and rewrite it correctly (results in input order).\n```\nasync function fetchAll(ids) {\n  const results = [];\n  ids.forEach(async (id) => {\n    const item = await getItem(id);\n    results.push(item);\n  });\n  return results;\n}\n```", "points": 8, "manual": true, "model": "// Bug: forEach does not await the async callbacks, so return runs before any push.\nasync function fetchAll(ids) {\n  return Promise.all(ids.map(id => getItem(id)));\n}\n// or sequential: for (const id of ids) results.push(await getItem(id));", "rubric": ["Identifies that forEach does not wait for the async callbacks. (4)", "Correct fix: Promise.all(ids.map(...)) or for...of with await. (3)", "Order correct / reasons about parallel vs sequential. (1)"]}], "sections": {"R": "Core Concepts", "O": "Code Reading", "C": "Coding Problems", "D": "SQL & Debugging"}};
+window.__SB__ = {"url": "https://lezcgmnmcpgbecqtuqsg.supabase.co", "key": "YOUR_SUPABASE_SERVICE_KEY", "table": "assessment_submissions"};
+(function(){
+  "use strict";
+  var BANK=window.__BANK__, SB=window.__SB__||{};
+  var subs=[];           // normalized submissions
+  var marks={};          // persisted manual marks: sig -> {qid: score}
+  var sort={k:"submitted",dir:-1};
+  var $=function(s,r){return (r||document).querySelector(s);};
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  try{marks=JSON.parse(localStorage.getItem("dash_marks")||"{}");}catch(e){marks={};}
+  function saveMarks(){try{localStorage.setItem("dash_marks",JSON.stringify(marks));}catch(e){}}
+
+  // prefill supabase config
+  // hosted mode: data is served by /api/submissions (key stays server-side)
+
+  function qbyid(form,id){var arr=BANK[form]||[];for(var i=0;i<arr.length;i++)if(arr[i].id===id)return arr[i];return null;}
+  function sig(s){return (s.candidate&&s.candidate.email||"")+"|"+(s.submittedAt||"");}
+
+  function normalize(raw){
+    // accept a Supabase row {payload:{...}} or a bare payload {meta,...}
+    var p = raw && raw.payload ? raw.payload : raw;
+    if(!p||!p.meta) return null;
+    return {candidate:p.meta.candidate, form:p.meta.form||raw.form||"", submittedAt:p.meta.submittedAt,
+            autoSubmitted:p.meta.autoSubmitted, timeUsedSec:p.meta.timeUsedSec, durationMin:p.meta.durationAllowedMin,
+            answers:p.answers||[], proctoring:p.proctoring||{}, integrity:p.integrity||{events:0,log:[],risk:{score:0,band:"low"}}};
+  }
+  function addSubs(list){
+    list.forEach(function(raw){var s=normalize(raw);if(!s)return;
+      // de-dupe by signature
+      var g=sig(s);if(subs.some(function(x){return sig(x)===g;}))return;subs.push(s);});
+    render();
+  }
+
+  // ---- scoring ----
+  // ---- automatic (estimated) scoring of written code/SQL answers ----
+  // Each signal: [regex, weight, label]. Weights sum to the question's points.
+  // This is an ESTIMATE from rubric-signal detection (no code execution), not an exact score.
+  var AUTO_SIG={
+    "A-C1":[[/\bfor\b|\bwhile\b/i,3,"iterates over the prices"],
+            [/buy1|sell1|buy2|sell2|\bb1\b|\bs1\b|\bb2\b|\bs2\b|second\s+(buy|sell|transaction)|two\s+transaction|k\s*=\s*2|dp\s*\[\s*2|\[2\]\[|twice/i,5,"tracks two transactions (not just one)"],
+            [/\bmax\b|math\.max/i,2,"takes the maximum profit"],
+            [/return\s+\S/i,2,"returns a result"]],
+    "A-C2":[[/\bmap\b|dict|hashmap|new\s+map|ordereddict|unordered_map/i,4,"hash map for O(1) lookup"],
+            [/linked\s*list|doubly|move_to_end|movetoend|\bnode\b|prev|head[\s\S]{0,20}tail|ordereddict/i,4,"recency-ordering structure"],
+            [/get\s*\(/i,1,"get() implemented"],
+            [/put\s*\(|set\s*\(/i,1,"put() implemented"],
+            [/evict|popitem|pop\s*\(|removelast|removehead|\bdel\b|delete/i,2,"evicts the least-recently-used key"]],
+    "A-C3":[[/\bfor\b|\bwhile\b|attempt|retry/i,3,"retry loop with an attempt cap"],
+            [/try|catch|except|throw|rethrow|raise/i,2,"handles failure / rethrows"],
+            [/2\s*\*\*|pow\s*\(|<<|\*\s*2\b|exponential|delay\s*\*|backoff/i,4,"exponential backoff"],
+            [/jitter|random|math\.random|rand\s*\(/i,3,"adds jitter"]],
+    "A-D1":[[/select/i,1,"SELECT query"],
+            [/group\s+by/i,2,"aggregates with GROUP BY"],
+            [/cast\s*\([\s\S]*as\s+date|::date|date_trunc|to_date|date\s*\(|trunc\s*\(/i,3,"groups by calendar day"],
+            [/\bmax\s*\(/i,2,"best day via MAX"],
+            [/\bsum\s*\(/i,2,"overall total via SUM"]],
+    "A-D2":[[/\?|\$1|:id\b|parameterized|prepared|placeholder|\bbind\b/i,4,"parameterized query (fixes SQL injection)"],
+            [/if\s*\(\s*err|catch|try|status\s*\(|\b404\b|\b500\b|!rows|rows\.length|if\s*\(\s*!/i,3,"error / empty-result handling"],
+            [/injection|select\s+id|select\s+\w+\s*,\s*\w/i,1,"names the issue / limits columns"]]
+  };
+  function autoScoreCode(q,txt){
+    var sigs=AUTO_SIG[q.id]||[]; txt=(txt||"").trim();
+    var meaningful=txt.replace(/\s+/g,"").length;
+    var hasLogic=/[=+\-*\/<>%]|\breturn\b|\bfor\b|\bwhile\b|\bif\b|\bselect\b|\binsert\b|\bupdate\b|\bdef\b|\bfunction\b|=>/i.test(txt);
+    if(meaningful<15||!hasLogic){return {pts:0,pct:0,matched:[],missed:sigs.map(function(s){return s[2];}),attempted:false};}
+    var total=0,got=0,matched=[],missed=[];
+    sigs.forEach(function(sg){total+=sg[1];if(sg[0].test(txt)){got+=sg[1];matched.push(sg[2]);}else{missed.push(sg[2]);}});
+    var pct=total?Math.round(got/total*100):0, pts=Math.round(got/(total||1)*q.points*2)/2;
+    return {pts:pts,pct:pct,matched:matched,missed:missed,attempted:true};
+  }
+  function scoreObjective(s){
+    var form=s.form, pts=0, max=0, correct=0, count=0, bySec={};
+    s.answers.forEach(function(a){
+      var q=qbyid(form,a.id);if(!q||(q.type!=="single"&&q.type!=="multi"))return;
+      max+=q.points;count++;bySec[q.section]=bySec[q.section]||{s:0,m:0};bySec[q.section].m+=q.points;
+      var sel=(a.selectedIndexes||[]).slice().sort(function(x,y){return x-y;});
+      var cor=(q.correct||[]).slice().sort(function(x,y){return x-y;});
+      var ok = sel.length===cor.length && sel.every(function(v,i){return v===cor[i];});
+      if(ok){pts+=q.points;correct++;bySec[q.section].s+=q.points;}
+      a._correct=ok;a._cor=cor;
+    });
+    return {pts:pts,max:max,correct:correct,count:count,pct:max?Math.round(pts/max*100):0,bySec:bySec};
+  }
+  function writtenMax(form){var m=0;(BANK[form]||[]).forEach(function(q){if(q.manual)m+=q.points;});return m;}
+  function writtenGot(s){var g=sig(s),mk=marks[g]||{},sum=0,any=false,usedAuto=false,usedManual=false;
+    (BANK[s.form]||[]).forEach(function(q){if(!q.manual)return;any=true;
+      if(typeof mk[q.id]==="number"){sum+=mk[q.id];usedManual=true;}
+      else{var a=findAns(s,q.id),txt=(a&&a.text)||"";sum+=autoScoreCode(q,txt).pts;usedAuto=true;}});
+    return {sum:sum,any:any,usedAuto:usedAuto,usedManual:usedManual};}
+
+  // ---- KPIs ----
+  function renderKpis(){
+    var k=$("#kpis");
+    if(!subs.length){k.innerHTML="";return;}
+    var objs=subs.map(function(s){return scoreObjective(s).pct;});
+    var avg=Math.round(objs.reduce(function(a,b){return a+b;},0)/objs.length);
+    var high=subs.filter(function(s){return (s.integrity.risk||{}).band==="high";}).length;
+    var med=subs.filter(function(s){return (s.integrity.risk||{}).band==="med";}).length;
+    k.innerHTML=
+      kpi("Candidates",subs.length)+
+      kpi("Avg objective",avg+"%")+
+      kpi("Integrity: high",high)+
+      kpi("Integrity: medium",med);
+  }
+  function kpi(l,v){return '<div class="kpi"><div class="l">'+esc(l)+'</div><div class="v tnum">'+esc(v)+'</div></div>';}
+
+  // ---- table ----
+  function rowData(s){
+    var o=scoreObjective(s), wmax=writtenMax(s.form), w=writtenGot(s);
+    var totMax=o.max+wmax, totGot=o.pts+(w.any?w.sum:0);
+    return {s:s,name:s.candidate.name||"—",email:s.candidate.email||"",form:s.form,
+      submitted:s.submittedAt||"",exp:s.candidate.experience||"",
+      obj:o.pct,objStr:o.pts+"/"+o.max,written:w.any?(w.sum+"/"+wmax):("– /"+wmax),writtenNum:w.any?w.sum:-1,
+      total:Math.round(totGot/totMax*100),totStr:totGot+"/"+totMax,usedAuto:w.usedAuto,
+      attn:(s.proctoring.attentionPercent==null?-1:s.proctoring.attentionPercent),
+      risk:(s.integrity.risk||{band:"low",score:0}),flags:(s.integrity.events||0)};
+  }
+  function render(){
+    renderKpis();
+    var q=($("#search").value||"").toLowerCase(), ff=$("#formFilter").value, rf=$("#riskFilter").value;
+    var rows=subs.map(rowData).filter(function(r){
+      if(ff&&r.form!==ff)return false; if(rf&&r.risk.band!==rf)return false;
+      if(q&&(r.name.toLowerCase().indexOf(q)<0&&r.email.toLowerCase().indexOf(q)<0))return false; return true;});
+    var k=sort.k,dir=sort.dir;
+    rows.sort(function(a,b){var x=a[k],y=b[k];if(k==="risk"){x=a.risk.score;y=b.risk.score;}
+      if(typeof x==="string"){x=x.toLowerCase();y=(""+y).toLowerCase();}
+      return (x<y?-1:x>y?1:0)*dir;});
+    var tb=$("#tbody");tb.innerHTML="";
+    rows.forEach(function(r){
+      var tr=document.createElement("tr");
+      tr.innerHTML='<td><b>'+esc(r.name)+'</b><div class="faint" style="font-size:11.5px">'+esc(r.email)+'</div></td>'
+        +'<td><span class="pill '+(r.form==="A"?"a":"b")+'">Form '+esc(r.form||"?")+'</span></td>'
+        +'<td class="tnum">'+esc((r.submitted||"").replace("T"," ").slice(0,16))+'</td>'
+        +'<td>'+esc(r.exp)+'</td>'
+        +'<td><span class="scorebar"><span class="t"><i style="width:'+r.obj+'%"></i></span><b class="tnum">'+r.obj+'%</b></span><div class="faint tnum" style="font-size:11px">'+esc(r.objStr)+'</div></td>'
+        +'<td class="tnum">'+esc(r.written)+'</td>'
+        +'<td class="tnum"><b>'+r.total+'%</b><div class="faint tnum" style="font-size:11px">'+esc(r.totStr)+(r.usedAuto?" · incl. auto":"")+'</div></td>'
+        +'<td class="tnum">'+(r.attn<0?"—":r.attn+"%")+'</td>'
+        +'<td><span class="pill '+r.risk.band+'">'+r.risk.band.toUpperCase()+' '+r.risk.score+'</span></td>'
+        +'<td class="tnum">'+r.flags+'</td>';
+      tr.addEventListener("click",function(){openDetail(r.s);});
+      tb.appendChild(tr);
+    });
+    $("#emptyState").style.display=rows.length?"none":"block";
+  }
+  document.querySelectorAll("#tbl th").forEach(function(th){th.addEventListener("click",function(){var k=th.getAttribute("data-k");if(sort.k===k)sort.dir*=-1;else{sort.k=k;sort.dir=1;}render();});});
+  $("#search").addEventListener("input",render);$("#formFilter").addEventListener("change",render);$("#riskFilter").addEventListener("change",render);
+
+  // ---- detail ----
+  function openDetail(s){
+    var o=scoreObjective(s), g=sig(s), mk=marks[g]||(marks[g]={}), wmax=writtenMax(s.form);
+    var P=s.proctoring, rk=s.integrity.risk||{band:"low",score:0};
+    var h='';
+    h+='<div class="dh"><div><h2 style="font-size:19px">'+esc(s.candidate.name||"Candidate")+'</h2>'
+      +'<div class="muted" style="font-size:12.5px;margin-top:3px">'+esc(s.candidate.email||"")+' · '+esc(s.candidate.phone||"")+' · '+esc(s.candidate.experience||"")+' · Stack: '+esc(s.candidate.stack||"—")+'</div>'
+      +'<div class="muted" style="font-size:12px;margin-top:2px">Form '+esc(s.form)+' · submitted '+esc((s.submittedAt||"").replace("T"," ").slice(0,16))+(s.autoSubmitted?" (auto)":"")+' · used '+Math.floor((s.timeUsedSec||0)/60)+'m/'+(s.durationMin||60)+'m</div></div>'
+      +'<button class="x" id="closeDetail">×</button></div>';
+    h+='<div class="dbody">';
+
+    // integrity summary
+    h+='<div class="flags">';
+    h+=fc("Integrity priority",'<span class="pill '+rk.band+'">'+rk.band.toUpperCase()+' '+rk.score+'/100</span>',rk.band!=="low");
+    h+=fc("Objective",o.pts+'/'+o.max+' ('+o.pct+'%)',false);
+    h+=fc("Attention (face on screen)",(P.attentionPercent==null?"—":P.attentionPercent+"%"),P.attentionPercent!=null&&P.attentionPercent<70);
+    h+=fc("Tab / window switches",(P.tabSwitches||0),(P.tabSwitches||0)>0);
+    h+=fc("Looked away",(P.lookAwayCount||0)+" · ~"+(P.lookAwaySec||0)+"s",(P.lookAwayCount||0)>3);
+    h+=fc("Face not visible",(P.noFaceEvents||0)+" · ~"+(P.noFaceSec||0)+"s",(P.noFaceEvents||0)>0);
+    h+=fc("Multiple faces",(P.multiFaceEvents||0),(P.multiFaceEvents||0)>0);
+    h+=fc("Left full-screen",(P.fullscreenExits||0),(P.fullscreenExits||0)>0);
+    h+='</div>';
+    h+='<p class="muted" style="font-size:12px;margin-top:8px">Integrity signals are for review, not an automatic verdict — confirm against the snapshots below.</p>';
+
+    // objective detail
+    h+='<div class="sec"><h3>Objective answers <span class="tag">'+o.correct+'/'+o.count+' correct · auto-scored</span></h3>';
+    (BANK[s.form]||[]).forEach(function(q){
+      if(q.type!=="single"&&q.type!=="multi")return;
+      var a=findAns(s,q.id), sel=(a&&a.selectedIndexes)||[], ok=a&&a._correct;
+      h+='<div class="qrow"><div class="qh">'+esc(q.id)+' · '+q.points+' pts · '+(ok?'<span class="ok">correct</span>':'<span class="bad">incorrect</span>')+'</div>';
+      h+='<div class="qp">'+inlineMd(q.prompt)+'</div>';
+      h+='<div class="chosen">Chosen: '+(sel.length?sel.map(function(i){return esc(q.options[i]);}).join(" ; "):"<i>blank</i>")+'</div>';
+      h+='<div class="chosen">Correct: '+(q.correct||[]).map(function(i){return esc(q.options[i]);}).join(" ; ")+'</div></div>';
+    });
+    h+='</div>';
+
+    // written detail + grading
+    var wsum=0;
+    h+='<div class="sec"><h3>Written answers <span class="tag">auto-estimated · type a mark to override · '+wmax+' pts</span></h3>';
+    h+='<div class="autonote">Code &amp; SQL answers are auto-estimated from rubric signals (no code is executed), so treat them as a guide and verify shortlisted candidates. The ✓/✗ list shows what was detected; typing a mark overrides the estimate.</div>';
+    (BANK[s.form]||[]).forEach(function(q){
+      if(!q.manual)return;
+      var a=findAns(s,q.id), txt=(a&&a.text)||"";
+      var est=autoScoreCode(q,txt), hasManual=(typeof mk[q.id]==="number");
+      wsum+=hasManual?mk[q.id]:est.pts;
+      var cur=hasManual?mk[q.id]:"";
+      var band=!est.attempted?"bad":(est.pct>=70?"ok":(est.pct>=40?"warn":"bad"));
+      h+='<div class="qrow"><div class="qh">'+esc(q.id)+' · '+(q.section)+' · '+q.points+' pts</div>';
+      h+='<div class="qp">'+inlineMd(q.prompt)+'</div>';
+      h+='<div class="muted" style="font-size:11.5px;margin:6px 0 3px">Candidate answer</div><pre>'+esc(txt||"(blank)")+'</pre>';
+      if(!est.attempted){h+='<div class="autoest bad">Auto-estimate: 0 / '+q.points+' · not attempted</div>';}
+      else{h+='<div class="autoest '+band+'">Auto-estimate: '+est.pts+' / '+q.points+' · '+est.pct+'%</div>';
+        h+='<ul class="checks">'+est.matched.map(function(m){return '<li class="ok">✓ '+esc(m)+'</li>';}).join("")+est.missed.map(function(m){return '<li class="no">✗ '+esc(m)+'</li>';}).join("")+'</ul>';}
+      if(q.model){h+='<details class="modelbox"><summary>Model solution</summary><pre style="margin-top:8px">'+esc(q.model)+'</pre></details>';}
+      if(q.rubric&&q.rubric.length){h+='<ul class="rubric">'+q.rubric.map(function(r){return '<li>'+esc(r)+'</li>';}).join("")+'</ul>';}
+      h+='<div class="mark">Marks: <input type="number" min="0" max="'+q.points+'" step="0.5" data-qid="'+q.id+'" value="'+cur+'" placeholder="'+est.pts+'"> / '+q.points+' <span class="faint">'+(hasManual?"(manual — saved)":"(auto "+est.pts+" — type to override)")+'</span></div>';
+      h+='</div>';
+    });
+    h+='<div style="text-align:right;font-weight:700;margin-top:6px">Written subtotal: <span id="wsub" class="tnum">'+wsum+'</span> / '+wmax+'</div>';
+    h+='</div>';
+
+    // snapshots
+    if(P.snapshots&&P.snapshots.length){
+      h+='<div class="sec"><h3>Webcam snapshots <span class="tag">'+P.snapshots.length+' frames — the ground truth</span></h3><div class="film">';
+      P.snapshots.forEach(function(sn){var fl=sn.tag&&sn.tag!=="interval"&&sn.tag!=="start"&&sn.tag!=="end";
+        h+='<figure'+(fl?' class="flagd"':'')+'><img src="'+sn.img+'" loading="lazy" alt=""><figcaption>'+esc((sn.at||"").slice(11,19))+(fl?' · '+esc(sn.tag):'')+'</figcaption></figure>';});
+      h+='</div></div>';
+    }
+    // event log
+    var log=(s.integrity.log||[]);
+    if(log.length){
+      h+='<div class="sec"><h3>Integrity event log <span class="tag">'+log.length+' events</span></h3><table class="logtbl"><tr><th>#</th><th>Event</th><th>Q</th><th>Time</th></tr>';
+      log.forEach(function(e,i){h+='<tr><td>'+(i+1)+'</td><td>'+esc(e.type)+'</td><td>'+esc(e.q||"")+'</td><td>'+esc((e.at||"").replace("T"," ").slice(0,19))+'</td></tr>';});
+      h+='</table></div>';
+    }
+    h+='</div>';
+    $("#detailContent").innerHTML=h;
+    $("#closeDetail").addEventListener("click",closeDetail);
+    // wire marks
+    $("#detailContent").querySelectorAll('input[data-qid]').forEach(function(inp){
+      inp.addEventListener("input",function(){
+        var qid=inp.getAttribute("data-qid"),v=parseFloat(inp.value);
+        if(isNaN(v)){delete mk[qid];}else{var q=qbyid(s.form,qid);v=Math.max(0,Math.min(q.points,v));mk[qid]=v;}
+        marks[g]=mk;saveMarks();
+        $("#wsub").textContent=writtenGot(s).sum;
+        render();
+      });
+    });
+    $("#detailOverlay").classList.add("show");
+  }
+  function fc(l,v,alert){return '<div class="flagcell'+(alert?' alert':'')+'"><div class="l">'+esc(l)+'</div><div class="v">'+v+'</div></div>';}
+  function findAns(s,id){for(var i=0;i<s.answers.length;i++)if(s.answers[i].id===id)return s.answers[i];return null;}
+  function inlineMd(p){var s=esc(p).replace(/```[\s\S]*?```/g," [code] ").replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\n/g," ");return s;}
+  function closeDetail(){$("#detailOverlay").classList.remove("show");}
+  $("#detailOverlay").addEventListener("click",function(e){if(e.target===$("#detailOverlay"))closeDetail();});
+
+  // ---- Supabase load ----
+  function hrToken(){try{return sessionStorage.getItem("hr_token")||"";}catch(e){return "";}}
+  function loadFromSupabase(){
+    setConn("Loading…");
+    var h={"Accept":"application/json"}, t=hrToken(); if(t)h["x-access"]=t;
+    fetch("/api/submissions",{headers:h,cache:"no-store"})
+      .then(function(r){
+        if(r.status===401){var p=prompt("Enter the access code for this dashboard:");if(p){try{sessionStorage.setItem("hr_token",p);}catch(e){}loadFromSupabase();}else{setConn("Access code required.",true);}throw new Error("__auth__");}
+        if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(rows){if(!Array.isArray(rows))throw new Error((rows&&rows.error)||"unexpected response");addSubs(rows);setConn("Loaded "+rows.length+" submission(s) at "+new Date().toLocaleTimeString()+".");})
+      .catch(function(e){if(e.message==="__auth__")return;setConn("Could not load results ("+e.message+"). Press Refresh to retry.",true);});
+  }
+  function setConn(msg,warn){var e=$("#connStatus");e.textContent=msg;e.style.color=warn?"var(--danger)":"var(--muted)";}
+  $("#refreshBtn").addEventListener("click",loadFromSupabase);
+
+  // ---- file import ----
+  $("#importBtn").addEventListener("click",function(){$("#fileInput").click();});
+  $("#fileInput").addEventListener("change",function(e){
+    var files=Array.prototype.slice.call(e.target.files||[]),done=0,got=[];
+    if(!files.length)return;
+    files.forEach(function(f){var rd=new FileReader();rd.onload=function(){try{var j=JSON.parse(rd.result);if(Array.isArray(j))got=got.concat(j);else got.push(j);}catch(err){}done++;if(done===files.length){addSubs(got);setConn("Imported "+got.length+" record(s) from file(s).");}};rd.readAsText(f);});
+    e.target.value="";
+  });
+  // drag & drop
+  ["dragover","drop"].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});});
+  document.addEventListener("drop",function(e){var files=Array.prototype.slice.call(e.dataTransfer.files||[]);if(!files.length)return;var done=0,got=[];files.forEach(function(f){var rd=new FileReader();rd.onload=function(){try{var j=JSON.parse(rd.result);if(Array.isArray(j))got=got.concat(j);else got.push(j);}catch(err){}done++;if(done===files.length){addSubs(got);setConn("Imported "+got.length+" record(s) via drag & drop.");}};rd.readAsText(f);});});
+
+  // ---- CSV ----
+  $("#csvBtn").addEventListener("click",function(){
+    if(!subs.length)return;
+    var hdr=["name","email","phone","experience","form","submitted_at","objective_pts","objective_max","objective_pct","written_pts","written_max","integrity_band","integrity_score","attention_pct","tab_switches","look_aways","no_face","multi_face"];
+    var lines=[hdr.join(",")];
+    subs.forEach(function(s){var o=scoreObjective(s),w=writtenGot(s),P=s.proctoring,rk=s.integrity.risk||{};
+      var row=[s.candidate.name,s.candidate.email,s.candidate.phone,s.candidate.experience,s.form,s.submittedAt,o.pts,o.max,o.pct,(w.any?w.sum:""),writtenMax(s.form),rk.band,rk.score,(P.attentionPercent==null?"":P.attentionPercent),P.tabSwitches||0,P.lookAwayCount||0,P.noFaceEvents||0,P.multiFaceEvents||0];
+      lines.push(row.map(function(v){v=(v==null?"":String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(","));});
+    var blob=new Blob([lines.join("\n")],{type:"text/csv"}),u=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=u;a.download="assessment_results_"+new Date().toISOString().slice(0,10)+".csv";document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},1000);
+  });
+
+  // auto-load if configured, else try localStorage pending (same-machine testing)
+  loadFromSupabase();
+  try{var pend=JSON.parse(localStorage.getItem("assessment_pending")||"[]");if(pend.length){addSubs(pend);setConn("Loaded "+pend.length+" locally-saved submission(s) from this browser.");}}catch(e){}
+  render();
+})();
+</script>
+</body>
+</html>
