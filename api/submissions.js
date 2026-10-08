@@ -3,14 +3,16 @@
 // Env vars to set in the Vercel project:
 //   SUPABASE_URL           = https://lezcgmnmcpgbecqtuqsg.supabase.co
 //   SUPABASE_SERVICE_KEY   = <your rotated service_role key>
-//   SUPABASE_TABLE         = assessment_submissions   (optional; this is the default)
-//   DASH_TOKEN             = <optional access code>   (only if you are NOT using Vercel Password Protection)
+//   DASH_TOKEN             = <access code HR will enter>  (REQUIRED — data is refused without it)
+//   SUPABASE_TABLE         = assessment_submissions       (optional; this is the default)
 module.exports = async (req, res) => {
   const base  = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key   = process.env.SUPABASE_SERVICE_KEY || "";
   const table = process.env.SUPABASE_TABLE || "assessment_submissions";
   const tok   = process.env.DASH_TOKEN || "";
-  if (tok && (req.headers["x-access"] || "") !== tok) { res.status(401).json({ error: "unauthorized" }); return; }
+  // Fail safe: never serve candidate data unless an access code is configured.
+  if (!tok) { res.status(503).json({ error: "Access code not set. Add DASH_TOKEN in Vercel - Settings - Environment Variables, then redeploy." }); return; }
+  if ((req.headers["x-access"] || "") !== tok) { res.status(401).json({ error: "unauthorized" }); return; }
   if (!base || !key) { res.status(500).json({ error: "Server not configured: set SUPABASE_URL and SUPABASE_SERVICE_KEY in Vercel environment variables." }); return; }
   try {
     const r = await fetch(base + "/rest/v1/" + table + "?select=*&order=created_at.desc",
